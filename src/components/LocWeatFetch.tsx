@@ -1,65 +1,65 @@
 import React from 'react';
 
 type LocWeatState = {
-    lat: string,
-    lon: string,
-    temp: number,
-    feelsLike: number,
+    lat: number | null,
+    lon: number | null,
+    temp: number | null,
+    feelsLike: number | null,
     weatherType: string,
+    userLocation: string,
 }
 
 class LocWeat extends React.Component<{}, LocWeatState> {
-    getPos() {
-        navigator.geolocation.getCurrentPosition((pos) => this.success(pos), (posErr) => this.error(posErr));
-    }
-
-    success(position: any) {
-        const lat: string = position.coords.latitude;
-        const lon: string = position.coords.longitude;
-
-        this.setState({
-            lat: lat,
-            lon: lon,
-        })
-    }
-
-    error(posErr: any) {
-        console.warn(`ERROR(${posErr.code}): ${posErr.message}`);
-    }
-
-    setWeat(json: any) {
-        this.setState({
-            temp: json.current.temp,
-            feelsLike: json.current.feels_like,
-            weatherType: json.current.weather[0].main,
-        })
-    }
-
-    async getWeat() {
-        const url: string = `https://api.openweathermap.org/data/2.5/onecall?lat=${this.state.lat}&lon=${this.state.lon}&units=imperial&appid=${process.env.REACT_APP_APIKEY}`; //APIkey possibly not passing properly?
-        
-        //!!!CONSOLE LOG STUFF!!!
-
-        await window.fetch(url)
-            .then(res => res.json())
-            .then(json => this.setWeat(json))
-            .catch(err => console.log(err));
-    }
-
-    componentDidMount() {
-        this.getPos();
-        if(this.state.temp == null){
-            this.getWeat();
+    constructor(props: {}) {
+        super(props);
+        this.state = {
+            lat: null,
+            lon: null,
+            temp: null,
+            feelsLike: null,
+            weatherType: '',
+            userLocation: '',
         }
     }
 
+    getPos() {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            this.setState({
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+            })
+        });
+        setTimeout(() => this.setWeat(), 2000);
+    }
+
+    setWeat() {
+        if(this.state.lat && this.state.lon) {
+            const url: string = `https://api.openweathermap.org/data/2.5/weather?lat=${this.state.lat}&lon=${this.state.lon}&units=imperial&appid=${process.env.REACT_APP_APIKEY}`;
+            fetch(url)
+                .then(res => res.json())
+                .then(json => {
+                    this.setState({
+                        temp: json.main.temp,
+                        feelsLike: json.main.feels_like,
+                        weatherType: json.weather[0].main,
+                        userLocation: json.name,
+                    })
+                });
+        } else {
+            console.warn('Unable to get location data, please approve location data access in your browser to get weather for your area.');
+        }
+
+    }
+
     render() {
-        return(
+        return (
             <div>
-                <h1>Your Current Location's Weather</h1>
-                <h2>{this.state.temp}</h2>
-                <h2>{this.state.feelsLike}</h2>
-                <h2>{this.state.weatherType}</h2>
+                <h1>Click to get weather for you area</h1>
+                <button onClick={() => this.getPos()}>Get Weather</button>
+                <h1>Weather in {this.state.userLocation}</h1>
+                <h2>Actual Temperature in F: {this.state.temp}</h2>
+                <h2>Feels Like Temperature in F: {this.state.feelsLike}</h2>
+                <h2>Weather Condition: {this.state.weatherType}</h2>
             </div>
         )
     }
